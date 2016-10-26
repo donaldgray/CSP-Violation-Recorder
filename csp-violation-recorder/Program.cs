@@ -29,7 +29,15 @@
             this.serviceUrl = serviceUrl;
         }
 
-        public override void Configure(Container container) => Log.Logger = CreateLogger();
+        public override void Configure(Container container)
+        {
+            const string contentType = "application/csp-report";
+
+            ContentTypes.Register(contentType, (req, o, stream) => JsonSerializer.SerializeToStream(o.GetType(), stream),
+                JsonSerializer.DeserializeFromStream);
+            
+            Log.Logger = CreateLogger();
+        }
 
         private ILogger CreateLogger()
             => new LoggerConfiguration()
@@ -42,8 +50,10 @@
         private static readonly ILogger Logger = Log.ForContext<RecorderService>();
 
         public void Post(CspViolation violation)
-            => Logger.ForContext("violation", violation.Report, true).Information(
-                $"CSP-Violation received: {violation.Report.ViolatedDirective}");
+        {
+            Logger.ForContext("violation", violation.Report, true)
+                  .Information($"CSP-Violation received: {violation.Report.ViolatedDirective}");
+        }
     }
 
     [DataContract]
@@ -71,5 +81,11 @@
 
         [DataMember(Name = "blocked-uri")]
         public Uri BlockedUri { get; set; }
+
+        [DataMember(Name = "script-sample")]
+        public string ScriptSample { get; set; }
+
+        [DataMember(Name = "line-number")]
+        public int LineNumber { get; set; }
     }
 }
